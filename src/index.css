@@ -1,2 +1,27 @@
 @import "tailwindcss";
-@variant dark (.dark &);
+@layer base {
+  :root, html, body {
+    color-scheme: light !important;
+    
+    background-color: #f8fafc !important; 
+    
+    color: #0f172a !important; 
+  }
+
+  [data-slot="card"], .card, .bg-card, .bg-background {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  table, th, td, tr, thead, tbody {
+    background-color: transparent !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  [role="dialog"], [data-slot="dialog-content"] {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+}
