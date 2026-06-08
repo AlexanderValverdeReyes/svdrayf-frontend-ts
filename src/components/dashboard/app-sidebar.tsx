@@ -87,8 +87,6 @@ export function AppSidebar({ user, activeView, setActiveView, ...props }: AppSid
     { name: "Reportes Filtrados", url: "socio-reports", icon: IconFileWord },
   ]
 
-  // Soporte transversal común para todos los perfiles autorizados
- //const navSecondaryComun: any[] = [];
 
   // ========================================================
   //  CONMUTADOR DINÁMICO DE CONTEXTOS (RBAC)
