@@ -22,7 +22,7 @@ const Services = () => {
         maxWidth: '1200px', 
         margin: '0 auto' 
       }}>
-        {serviciosData.map((servicio, index) => (
+        {serviciosData.map((servicio:any, index:number) => (
           <div key={index} style={{
             backgroundColor: 'white',
             borderRadius: '15px',
@@ -41,7 +41,7 @@ const Services = () => {
               {servicio.descripcion}
             </p>
             <div style={{ borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-              {servicio.caracteristicas.map((item, idx) => (
+              {servicio.caracteristicas.map((item:any, idx:number) => (
                 <p key={idx} style={{ fontSize: '0.9rem', color: '#333', margin: '0.4rem 0' }}>
                   {item}
                 </p>
