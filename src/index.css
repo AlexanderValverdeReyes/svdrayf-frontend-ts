@@ -2,26 +2,40 @@
 @layer base {
   :root, html, body {
     color-scheme: light !important;
-    
     background-color: #f8fafc !important; 
-    
     color: #0f172a !important; 
   }
 
-  [data-slot="card"], .card, .bg-card, .bg-background {
+  @media (prefers-color-scheme: dark) {
+    html, body {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+  }
+ 
+  table, thead, tbody, tr {
     background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
 
-  table, th, td, tr, thead, tbody {
-    background-color: transparent !important;
+  th {
+    background-color: #f1f5f9 !important; 
+    color: #334155 !important;
+    font-weight: 600;
+    border-color: #e2e8f0 !important;
+  }
+
+  td {
+    background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
-  
-  [role="dialog"], [data-slot="dialog-content"] {
+
+  [data-slot="card"], .card, .bg-card, .bg-background, 
+  [role="dialog"], [data-slot="dialog-content"], [data-slot="popover-content"] {
     background-color: #ffffff !important;
     color: #0f172a !important;
+    border-color: #e2e8f0 !important;
   }
 }
