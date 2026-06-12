@@ -89,7 +89,7 @@ const changeView = (view: string) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
         <p className="text-sm font-bold text-[#1E3A8A] animate-pulse">
           Validando firmas digitales con Neon DB...
         </p>
