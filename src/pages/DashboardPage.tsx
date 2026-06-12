@@ -119,7 +119,7 @@ const changeView = (view: string) => {
         <SidebarInset>
           <SiteHeader user={session} onLogout={handleLogout} />
           
-          <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950 min-h-[calc(100vh-var(--header-height))] overflow-y-auto p-6">
+          <div className="flex flex-1 flex-col bg-slate-50 min-h-[calc(100vh-var(--header-height))] overflow-y-auto p-6">
             <div className="@container/main flex flex-1 flex-col gap-2">
               
               {activeView === "admin-dash" && <AdminDashboard />}
