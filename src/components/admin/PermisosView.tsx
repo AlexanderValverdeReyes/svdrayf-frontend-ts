@@ -143,6 +143,23 @@ export default function PermisosView(): React.JSX.Element {
   // Procesador del Submit con persistencia hacia el Backend en Node.js
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // 1. DEFINICIÓN DE REGLAS DE VALIDACIÓN (REGEX)
+    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    const correoRegex = /^[^\s@]+@(mala\.com|svdrayf\.com)$/;
+
+    // 2. VALIDACIÓN DE NOMBRE (Aplica a ambos modos: add y edit)
+    if (!nombreRegex.test(formNombres.trim())) {
+      alert("El nombre no es válido: solo se permiten letras y espacios.");
+      return; // Detiene la ejecución si el nombre tiene números o caracteres extraños
+    }
+
+    // 3. VALIDACIÓN DE CORREO (Solo aplica en modo 'add')
+    if (modalMode === 'add') {
+      if (!correoRegex.test(formCorreo.trim().toLowerCase())) {
+        alert("El correo debe pertenecer al dominio @mala.com o @svdrayf.com");
+        return; // Detiene la ejecución si el correo es inválido
+      }
+    }
     setLoading(true)
     const token = localStorage.getItem("svdrayf_token")
 
