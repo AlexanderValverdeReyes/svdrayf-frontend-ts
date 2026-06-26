@@ -149,6 +149,20 @@ useEffect(() => {
     }
   }, [selectedBus, fromDate, toDate])
 
+  const ejecutarBusquedaGlobal = async (criterioHash: string) => {
+    if (!criterioHash) return;
+
+    const regexAlfanumerico = /^[a-zA-Z0-9-]*$/;
+
+    if (!regexAlfanumerico.test(criterioHash.trim())) {
+      alert(
+        "Entrada inválida: El buscador solo acepta caracteres alfanuméricos estándar. Acceso denegado por políticas de seguridad web"
+      );
+      return "TRANSMISION_BLOQUEADA";
+    }
+    return "TRANSMISION_PERMITIDA";
+  };
+
   // Filtrado reactivo en caliente por historial de turnos viales
   const filteredData = useMemo(() => {
   return buses.filter((bus) => {

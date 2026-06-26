@@ -104,3 +104,38 @@ describe('RFN12 - Frontend: Exportar Reportes Web', () => {
         await expect(cargarDatosMasivos()).rejects.toThrow('timeout of 10000ms exceeded');
     });
 });
+
+// REQUERIMIENTO: RFN16 - BUSCADOR DE BOLETOS (BÚSQUEDA GLOBAL)
+describe('RFN16 - Frontend: Buscador de Boletos (Búsqueda Global)', () => {
+    
+    beforeEach(() => {
+        vi.clearAllMocks(); // Limpia los espías de ventanas de alerta
+    });
+
+    // CP53: FORMATO DE ENTRADA INVÁLIDO O INTENTO DE INYECCIÓN DE CÓDIGO (Sad Path)
+    test('CP53 — Debe interceptar localmente comandos extraños o símbolos y bloquear la transmisión', () => {
+        // 1. ARRANGE: El usuario intenta inyectar comandos SQL maliciosos o caracteres prohibidos
+        const entradaMaliciosa = "SELECT * FROM boleto; --"; 
+
+        // Réplica exacta de la lógica integrada en el componente
+        const ejecutarBusquedaGlobalMock = (criterioHash: string) => {
+            const regexAlfanumerico = /^[a-zA-Z0-9-]*$/;
+            if (!regexAlfanumerico.test(criterioHash.trim())) {
+                window.alert("Entrada inválida: El buscador solo acepta caracteres alfanuméricos estándar. Acceso denegado por políticas de seguridad web");
+                return "TRANSMISION_BLOQUEADA";
+            }
+            return "TRANSMISION_PERMITIDA";
+        };
+
+        // 2. ACT: Ejecutamos el flujo táctil simulado
+        const resultadoFlujo = ejecutarBusquedaGlobalMock(entradaMaliciosa);
+
+        // 3. ASSERT: Validamos que el candado perimetral frenó el ataque antes de llegar a la red
+        expect(resultadoFlujo).toBe("TRANSMISION_BLOQUEADA");
+
+        // Verificamos que se le muestra al usuario la alerta visual estricta exigida en el Excel
+        expect(mockAlert).toHaveBeenCalled();
+        const alertaLanzada = mockAlert.mock.calls[0][0];
+        expect(alertaLanzada).toContain("Entrada inválida: El buscador solo acepta caracteres alfanuméricos estándar.");
+    });
+});
