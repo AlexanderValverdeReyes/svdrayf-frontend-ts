@@ -221,10 +221,19 @@ useEffect(() => {
   setExportDialogOpen(true)
 }
   // ========================================================
-  // 🚀 MOTOR DE EXPORTACIÓN EXCEL Y PDF (CLIENT-SIDE)
+  //  MOTOR DE EXPORTACIÓN EXCEL Y PDF (CLIENT-SIDE)
   // ========================================================
 const ejecutarExportacionLote = () => {
   if (!selectedBus) return;
+
+  //  CANDADO DE SEGURIDAD OPERATIVA (Solución CP30): Bloqueo de Reportes Vacíos
+  if (!busSales || Number(busSales.total_boletos) === 0) {
+    alert(
+      "Aviso: No se encontraron registros de producción para la unidad en el periodo seleccionado. Asegúrese de que el cobrador haya cerrado el turno de viaje correctamente."
+    );
+    setExportDialogOpen(false); // Cierra el modal de manera limpia
+    return; // Aborta por completo la exportación de archivos sin datos
+  }
 
   const totalRecaudado = busSales ? Number(busSales.total_soles).toFixed(2) : "0.00";
   const totalBoletos = busSales ? busSales.total_boletos : 0;
@@ -232,7 +241,7 @@ const ejecutarExportacionLote = () => {
   const hastaTxt = toDate || "Fecha Actual";
 
   if (exportFormat === "xlsx") {
-    // 📊 Generación de archivo Excel (HTML table con formato .xls)
+    //  Generación de archivo Excel (HTML table con formato .xls)
     const htmlContent = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
         <head><meta charset="UTF-8"><title>Reporte</title></head>
@@ -260,14 +269,23 @@ const ejecutarExportacionLote = () => {
     link.click();
     document.body.removeChild(link);
   } else {
-    // 📄 Generación de PDF (imprimible) mejorada sin cierre automático
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Permite ventanas emergentes para generar el PDF.");
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) {
+      alert("Error perimetral al inicializar el motor de impresión local.");
+      document.body.removeChild(iframe);
       return;
     }
 
-    printWindow.document.write(`
+    doc.write(`
       <html>
         <head>
           <title>SVDRAYF - Reporte Ejecutivo Financiero</title>
@@ -312,22 +330,23 @@ const ejecutarExportacionLote = () => {
           <div class="footer">
             Reporte digital criptográfico emitido bajo la Consola de Gestión Centralizada. Firma digital conforme clúster Neon DB.
           </div>
-          <script>
-            // Pequeño retraso para asegurar renderizado antes de imprimir
-            setTimeout(() => { window.print(); }, 500);
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      document.body.removeChild(iframe);
+    }, 500);
   }
   setExportDialogOpen(false);
 };
-
   return (
     <div className="space-y-6 p-4 animate-in fade-in duration-150">
       
-      {/* 🚀 ARQUITECTURA MAESTRO-DETALLE MUTABLE (VISTA 1: GRILLA MAESTRA DE AUTOBUSES) */}
+      {/* ARQUITECTURA MAESTRO-DETALLE MUTABLE (VISTA 1: GRILLA MAESTRA DE AUTOBUSES) */}
       {!selectedBus ? (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -432,7 +451,7 @@ const ejecutarExportacionLote = () => {
         </>
       ) : (
         
-        /* 🚀 ARQUITECTURA MAESTRO-DETALLE MUTABLE (VISTA 2: AISLAMIENTO FINANCIERO DEL VEHÍCULO SELECCIONADO) */
+        /* ARQUITECTURA MAESTRO-DETALLE MUTABLE (VISTA 2: AISLAMIENTO FINANCIERO DEL VEHÍCULO SELECCIONADO) */
         <Card className="border-none shadow-xl rounded-2xl bg-white border border-slate-100 animate-in slide-in-from-right-4 duration-200">
           <CardHeader className="pb-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -527,9 +546,9 @@ const ejecutarExportacionLote = () => {
         </Card>
       )}
 
-      {/* ========================================================
-          🎛️ MODAL INTERACTIVO REFACTORIZADO (BOTONES REACCIONARIOS DE ALTA UX)
-         ======================================================== */}
+      {/* 
+           MODAL INTERACTIVO REFACTORIZADO (BOTONES REACCIONARIOS DE ALTA UX)
+          */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
         <DialogContent className="rounded-2xl max-w-md border-none p-6 bg-white shadow-2xl animate-in fade-in duration-200">
           <DialogHeader>
@@ -541,7 +560,7 @@ const ejecutarExportacionLote = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {/* 🛠️ SOLUCIÓN INTERACTIVIDAD: Reemplazo de RadioGroup por selectores de Botones Badge de alta UX */}
+          {/*  SOLUCIÓN INTERACTIVIDAD: Reemplazo de RadioGroup por selectores de Botones Badge de alta UX */}
           <div className="space-y-5 py-4">
             
             {/* Selección de Tipo de Reporte */}
@@ -553,7 +572,7 @@ const ejecutarExportacionLote = () => {
                   onClick={() => setReportType("auditoria")}
                   className={`w-full p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${reportType === "auditoria" ? "border-[#1E3A8A] bg-blue-50/50 font-bold text-[#1E3A8A]" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
                 >
-                  <span>📋 Balance e Inspección de Flota (Global)</span>
+                  <span> Balance e Inspección de Flota (Global)</span>
                   {reportType === "auditoria" && <CheckCircle2 className="w-4 h-4 text-[#1E3A8A]" />}
                 </button>
                 <button
@@ -561,7 +580,7 @@ const ejecutarExportacionLote = () => {
                   onClick={() => setReportType("cierre")}
                   className={`w-full p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${reportType === "cierre" ? "border-[#1E3A8A] bg-blue-50/50 font-bold text-[#1E3A8A]" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
                 >
-                  <span>💰 Libro de Cierre de Caja Diario</span>
+                  <span> Libro de Cierre de Caja Diario</span>
                   {reportType === "cierre" && <CheckCircle2 className="w-4 h-4 text-[#1E3A8A]" />}
                 </button>
                 <button
@@ -569,7 +588,7 @@ const ejecutarExportacionLote = () => {
                   onClick={() => setReportType("ventas")}
                   className={`w-full p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${reportType === "ventas" ? "border-[#1E3A8A] bg-blue-50/50 font-bold text-[#1E3A8A]" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"}`}
                 >
-                  <span>📈 Rendimiento Histórico por Rangos</span>
+                  <span> Rendimiento Histórico por Rangos</span>
                   {reportType === "ventas" && <CheckCircle2 className="w-4 h-4 text-[#1E3A8A]" />}
                 </button>
               </div>
