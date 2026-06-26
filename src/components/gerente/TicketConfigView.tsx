@@ -56,19 +56,47 @@ export default function TicketConfigView(): React.JSX.Element {
 
   // Guardar cambios
   const handleSave = async () => {
+    // [RFN14 - CP45]: Validación de RUC
+    const rucRegex = /^\d{11}$/;
+    if (!form.ruc || !rucRegex.test(form.ruc.trim())) {
+      setError("Formato incorrecto: El RUC debe estar compuesto obligatoriamente por exactamente 11 dígitos numéricos.");
+      return;
+    }
+
+    //  [RFN15 - CP48]: Validación interactiva de longitud de frase final
+    if (form.leyenda_pie && form.leyenda_pie.trim().length > 40) {
+      setError("Límite excedido: El mensaje final no puede superar los 40 caracteres para garantizar una impresión correcta en una sola línea del papel térmico de 58mm.");
+      return;
+    }
+
+    //  [RFN15 - CP49]: Validación interactiva de caracteres Bluetooth
+    const leyendaRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,!¡¿?()"-]*$/;
+    if (form.leyenda_pie && !leyendaRegex.test(form.leyenda_pie.trim())) {
+      setError("Caracteres no soportados: Solo se permiten letras, números, espacios y signos de puntuación básicos para prevenir errores tipográficos o caracteres corrompidos en las miniticketeras Bluetooth.");
+      return;
+    }
+
     setSaving(true)
     setError("")
     setSuccess("")
     try {
       const token = localStorage.getItem("svdrayf_token")
+      
       const res = await axios.put(`${API_URL}/api/admin/configuracion`, form, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000 // Límite estricto de 5 segundos para resiliencia cloud
       })
       if (res.data.status === "OK") {
         setSuccess("Configuración del ticket actualizada correctamente.")
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Error al guardar la configuración.")
+      console.error(err);
+      //  [RFN15 - CP50]: Capturador adaptado para indisponibilidad o latencia crítica de base de datos cloud
+      if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        setError("Error del servidor: Conexión con NeonDB interrumpida. La configuración no pudo ser guardada, intente nuevamente.");
+      } else {
+        setError(err.response?.data?.message || err.response?.data?.error || "Error al guardar la configuración.");
+      }
     } finally {
       setSaving(false)
     }
