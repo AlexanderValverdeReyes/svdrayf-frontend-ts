@@ -35,7 +35,13 @@ interface ExecutiveData {
     total_boletos_vendidos: number
     ruta_lider_nombre: string
     ruta_lider_rendimiento: number
+    
   }
+  pasajeros_tramos?: {
+    origen: string
+    destino: string
+    cantidad_pasajeros: number
+  }[]
 }
 
 interface Props {
@@ -286,6 +292,34 @@ export default function GerenteDashboard({ setActiveView }: Props): React.JSX.El
           </Card>
 
         </div>
+
+        {/*  NUEVA ADICIÓN PERIMETRAL: ANÁLISIS DE OCUPACIÓN POR TRAMO (RFN48) */}
+        <div className="mt-6 p-5 bg-white rounded-2xl border border-slate-100 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-[#1E3A8A] mb-3">
+            Análisis de Ocupación por Tramo (Auditoría de Origen a Destino)
+          </h4>
+          
+          {metrics?.pasajeros_tramos && metrics.pasajeros_tramos.some(t => t.cantidad_pasajeros > 0) ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {metrics.pasajeros_tramos.map((tramo, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs p-3 bg-slate-50/70 rounded-xl border border-slate-100">
+                  <span className="font-semibold text-slate-600">
+                     {tramo.origen} <span className="text-slate-400 mx-1">→</span> {tramo.destino}
+                  </span>
+                  <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-black rounded-lg font-mono">
+                    {tramo.cantidad_pasajeros} pas.
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /*  CP138: El sistema maneja de forma controlada la ausencia de transacciones */
+            <div className="p-4 border border-amber-100 bg-amber-50/40 rounded-xl text-center text-xs font-bold text-amber-600">
+               No se registran pasajeros en el tramo actual
+            </div>
+          )}
+        </div>
+
       </div>
 
     </div>
