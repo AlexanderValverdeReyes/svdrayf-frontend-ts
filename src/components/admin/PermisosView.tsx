@@ -1,4 +1,3 @@
-// src/components/admin/PermisosView.tsx
 "use client"
 
 import React, { useEffect, useState } from "react"
@@ -89,7 +88,6 @@ export default function PermisosView(): React.JSX.Element {
   const [formDni, setFormDni] = useState<string>("")
   const [formNombres, setFormNombres] = useState<string>("")
   const [formCorreo, setFormCorreo] = useState<string>("")
-  const [formPassword, setFormPassword] = useState<string>("")
   const [formIdRol, setFormIdRol] = useState<number>(5) // Por defecto Cobrador por volumen operativo
 
   // Función asíncrona para descargar el personal desde Express
@@ -117,26 +115,24 @@ export default function PermisosView(): React.JSX.Element {
     fetchUsuarios()
   }, [])
 
-  // Abrir modal en Modo Alta Completa (CUS-01)
+  // Abrir modal en Modo Alta Completa (CUS-01) - Clave por defecto eliminada
   const handleOpenAddMode = () => {
     setModalMode('add')
     setSelectedId(null)
     setFormDni("")
     setFormNombres("")
     setFormCorreo("")
-    setFormPassword("")
-    setFormIdRol(4) // Reset a Cobrador por defecto
+    setFormIdRol(5) // Reset a Cobrador por defecto
     setIsModalOpen(true)
   }
 
-  // Abrir modal en Modo Corrección Tipográfica (Solo DNI y Nombres Mutables)
+  // Abrir modal en Modo Corrección Tipográfica
   const handleOpenEditMode = (user: UsuarioUnidad) => {
     setModalMode('edit')
     setSelectedId(user.id_usuario)
     setFormDni(user.dni)
     setFormNombres(user.nombres)
     setFormCorreo(user.correo) 
-    setFormPassword("")
     setIsModalOpen(true)
   }
 
@@ -150,14 +146,14 @@ export default function PermisosView(): React.JSX.Element {
     // 2. VALIDACIÓN DE NOMBRE (Aplica a ambos modos: add y edit)
     if (!nombreRegex.test(formNombres.trim())) {
       alert("El nombre no es válido: solo se permiten letras y espacios.");
-      return; // Detiene la ejecución si el nombre tiene números o caracteres extraños
+      return;
     }
 
     // 3. VALIDACIÓN DE CORREO (Solo aplica en modo 'add')
     if (modalMode === 'add') {
       if (!correoRegex.test(formCorreo.trim().toLowerCase())) {
         alert("El correo debe pertenecer al dominio @mala.com o @svdrayf.com");
-        return; // Detiene la ejecución si el correo es inválido
+        return;
       }
     }
     setLoading(true)
@@ -165,13 +161,14 @@ export default function PermisosView(): React.JSX.Element {
 
     try {
       if (modalMode === 'add') {
-        // Registro de usuario encriptando la contraseña internamente en el Backend
-        const res = await axios.post(`${API_URL}/api/auth/register-test`, {
+        // El backend ahora recibe el DNI y lo hashea de forma transparente como contraseña inicial
+        const res = await axios.post(`${API_URL}/api/admin/usuarios`, {
           dni: formDni.trim(),
           nombres: formNombres.trim(),
           correo: formCorreo.trim().toLowerCase(),
-          password: formPassword,
           id_rol: formIdRol
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
         })
         if (res.data.status === "OK") {
           fetchUsuarios() 
@@ -191,7 +188,7 @@ export default function PermisosView(): React.JSX.Element {
         }
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || "Operación rechazada por la base de datos central.")
+      alert(err.response?.data?.message || err.response?.data?.error || "Operación rechazada por la base de datos central.")
     } finally {
       setLoading(false)
     }
@@ -232,7 +229,6 @@ export default function PermisosView(): React.JSX.Element {
       cell: ({ row }) => {
         const rol = row.getValue("nombre_rol") as string
         
-        // Asignación de colores corporativos estáticos según el rol relacional
         let badgeStyle = "bg-blue-50 text-blue-700 border-blue-200" // Socio
         if (rol === "Administrador") badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200"
         else if (rol === "Gerente") badgeStyle = "bg-amber-50 text-amber-700 border-amber-200"
@@ -390,7 +386,7 @@ export default function PermisosView(): React.JSX.Element {
 
       {/* ========================================================
           DIALOG MODAL DUAL CON TODOS LOS ROLES OPERATIVOS
-         ======================================================== */}
+          ======================================================== */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="rounded-2xl max-w-md border-none p-6 bg-white shadow-2xl">
           <DialogHeader>
@@ -400,7 +396,7 @@ export default function PermisosView(): React.JSX.Element {
             </DialogTitle>
             <DialogDescription className="text-xs font-medium text-slate-400">
               {modalMode === 'add' 
-                ? 'El identificador y clave ingresados permitirán el acceso inmediato al sistema web o aplicativo móvil.' 
+                ? 'El identificador ingresado permitirá el acceso al sistema web o aplicativo móvil utilizando su DNI como contraseña inicial.' 
                 : 'Control de Consistencia: Solo se autoriza enmendar errores de digitación en las columnas DNI y Apellidos/Nombres.'}
             </DialogDescription>
           </DialogHeader>
@@ -452,17 +448,10 @@ export default function PermisosView(): React.JSX.Element {
                   />
                 </div>
 
-                {/* Input Password */}
-                <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A]">Llave de Acceso Inicial</label>
-                  <Input 
-                    type="password"
-                    placeholder="••••••••" 
-                    value={formPassword} 
-                    onChange={(e) => setFormPassword(e.target.value)} 
-                    required 
-                    className="rounded-xl border-slate-200"
-                  />
+                {/* NOTA DE CONTRASEÑA AUTOGENERADA (REEMPLAZA AL INPUT DE CONTRASEÑA ANTERIOR) */}
+                <div className="p-3 bg-[#E8EEF5] border border-blue-100 rounded-xl text-xs text-[#1E3A8A] font-medium flex flex-col gap-1">
+                  <span className="font-bold">🔐 Contraseña Autogenerada:</span>
+                  <p>Por seguridad y para agilizar el despliegue, el sistema configurará automáticamente el <strong>DNI</strong> ingresado como su primera contraseña de acceso.</p>
                 </div>
 
                 {/* Selector con Todos los Roles de la Arquitectura SVDRAYF */}
@@ -478,7 +467,6 @@ export default function PermisosView(): React.JSX.Element {
                     <option value={3}>Socio Copropietario (Balances de Flota)</option>
                     <option value={4}>Fiscalizador / Inspector (Aplicativo Móvil - Control Fraude)</option>
                     <option value={5}>Cobrador en Ruta (Aplicativo Móvil - Venta Pasajes)</option>
-                    
                   </select>
                 </div>
               </>
