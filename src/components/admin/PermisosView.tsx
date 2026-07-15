@@ -91,7 +91,7 @@ export default function PermisosView(): React.JSX.Element {
   const [formIdRol, setFormIdRol] = useState<number>(5) // Por defecto Cobrador por volumen operativo
 
   // Función asíncrona para descargar el personal desde Express
-  const fetchUsuarios = async () => {
+ const fetchUsuarios = async () => {
     setLoading(true)
     setError("")
     try {
@@ -105,12 +105,22 @@ export default function PermisosView(): React.JSX.Element {
         setError("La base de datos rechazó la consulta de identidades.")
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Fallo transaccional al conectar con Neon DB.")
+      console.error("Error completo capturado:", err);
+      
+      // CAPTURA INTELIGENTE: Lee la propiedad real enviada por Node o detecta caída de red
+      const errorReal = err.response?.data?.message || err.response?.data?.error;
+      
+      if (errorReal) {
+        setError(errorReal);
+      } else if (err.response?.status === 404) {
+        setError(`Ruta no encontrada (404). Verifique que el endpoint /api/admin/usuarios exista.`);
+      } else {
+        setError("Fallo de comunicación de red: El servidor Express está apagado o hay un bloqueo de CORS.");
+      }
     } finally {
       setLoading(false)
     }
   }
-
   useEffect(() => {
     fetchUsuarios()
   }, [])
