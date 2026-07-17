@@ -45,6 +45,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
+// ========================================================
+// ENTIDADES Y TIPADOS ESTRICTOS ACTUALIZADOS (Mapea 'estado')
+// ========================================================
 interface UsuarioUnidad {
   id_usuario: number
   dni: string
@@ -52,6 +55,7 @@ interface UsuarioUnidad {
   correo: string
   nombre_rol: string
   id_rol?: number
+  estado: boolean // 👈 Sincronizado con la nueva columna de la BD
 }
 
 interface ApiResponse {
@@ -81,7 +85,7 @@ export default function PermisosView(): React.JSX.Element {
   const [formCorreo, setFormCorreo] = useState<string>("")
   const [formIdRol, setFormIdRol] = useState<number>(5)
 
-  // NUEVOS ESTADOS PARA EL FORMULARIO DE CONFIRMACIÓN DE BAJA LÓGICA (CP42)
+  // ESTADOS PARA LA CONFIRMACIÓN DE BAJA LÓGICA (CP42)
   const [isConfirmDeleteOpen, setIsDeleteOpen] = useState<boolean>(false)
   const [userToDelete, setUserToDelete] = useState<UsuarioUnidad | null>(null)
 
@@ -129,12 +133,10 @@ export default function PermisosView(): React.JSX.Element {
     setIsModalOpen(true)
   }
 
-  // Interceptor perimetral de Baja de Cuentas antes de abrir el modal de confirmación
   const handleOpenDeleteConfirm = (user: UsuarioUnidad) => {
     const token = localStorage.getItem("svdrayf_token")
     if (token) {
       try {
-        // Cripto-decodificación rápida del token JWT del cliente para evitar auto-baja
         const tokenPayload = JSON.parse(atob(token.split(".")[1]))
         if (tokenPayload.id_usuario === user.id_usuario) {
           alert("Acción Denegada: No es posible revocar privilegios ni dar de baja a su propia cuenta de administrador en sesión.")
@@ -148,7 +150,6 @@ export default function PermisosView(): React.JSX.Element {
     setIsDeleteOpen(true)
   }
 
-  // Ejecución asíncrona de desactivación lógica contra el endpoint del Backend
   const ejecutarBajaUsuario = async () => {
     if (!userToDelete) return
     setLoading(true)
@@ -163,7 +164,6 @@ export default function PermisosView(): React.JSX.Element {
         fetchUsuarios()
       }
     } catch (err: any) {
-      // Captura y despliega el mensaje exacto del servidor (Ej: si el cobrador está en ruta activa)
       alert(err.response?.data?.message || err.response?.data?.error || "Error de red al procesar la deactivación.")
     } finally {
       setLoading(false)
@@ -221,6 +221,9 @@ export default function PermisosView(): React.JSX.Element {
     }
   }
 
+  // ========================================================
+  // INYECCIÓN DE LA COLUMNA DE ESTADO EN TANSTACK TABLE
+  // ========================================================
   const columns: ColumnDef<UsuarioUnidad>[] = [
     {
       accessorKey: "id_usuario",
@@ -266,6 +269,22 @@ export default function PermisosView(): React.JSX.Element {
       },
     },
     {
+      accessorKey: "estado",
+      header: "Estado Cuenta",
+      cell: ({ row }) => {
+        const estadoActivo = row.getValue("estado") as boolean
+        return (
+          <Badge className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm border ${
+            estadoActivo 
+              ? "bg-green-50 text-green-700 border-green-200" 
+              : "bg-red-50 text-red-700 border-red-200"
+          }`}>
+            {estadoActivo ? "ACTIVO" : "INACTIVO / DE BAJA"}
+          </Badge>
+        )
+      },
+    },
+    {
       id: "actions",
       header: () => <div className="text-right">Acciones</div>,
       cell: ({ row }) => {
@@ -284,13 +303,18 @@ export default function PermisosView(): React.JSX.Element {
                   Copiar Documento DNI
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleOpenEditMode(user)} className="text-[#1E3A8A] font-medium">
-                  Subsanar Tipeo (DNI/Nombre)
-                </DropdownMenuItem>
-                {/* Botón de Baja Integrado en el menú contextual de cada celda */}
-                <DropdownMenuItem onClick={() => handleOpenDeleteConfirm(user)} className="text-[#C5221F] font-bold hover:bg-red-50">
-                  Dar de Baja Personal
-                </DropdownMenuItem>
+                
+                {/* 🛡️ CANDADO VISUAL: Solo permite editar o dar de baja si el estado es true */}
+                {user.estado && (
+                  <>
+                    <DropdownMenuItem onClick={() => handleOpenEditMode(user)} className="text-[#1E3A8A] font-medium">
+                      Subsanar Tipeo (DNI/Nombre)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleOpenDeleteConfirm(user)} className="text-[#C5221F] font-bold hover:bg-red-50">
+                      Dar de Baja Personal
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -320,7 +344,7 @@ export default function PermisosView(): React.JSX.Element {
             <Users className="w-6 h-6 text-[#1E3A8A]" /> Gestión y Registro de Usuarios
           </h2>
           <p className="text-sm font-medium text-slate-400">
-            Consola de control de identidades (CUS-01) para la matriculación de personal operativo y administrativo.
+            Consola de control de identidades (CUS-01) para la matriculación de personal operativo y administrative.
           </p>
         </div>
         <div className="flex items-center gap-2">
