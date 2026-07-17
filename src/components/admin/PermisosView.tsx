@@ -45,9 +45,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-// ========================================================
 // ENTIDADES Y TIPADOS ESTRICTOS ACTUALIZADOS (Mapea 'estado')
-// ========================================================
 interface UsuarioUnidad {
   id_usuario: number
   dni: string
@@ -221,9 +219,7 @@ export default function PermisosView(): React.JSX.Element {
     }
   }
 
-  // ========================================================
   // INYECCIÓN DE LA COLUMNA DE ESTADO EN TANSTACK TABLE
-  // ========================================================
   const columns: ColumnDef<UsuarioUnidad>[] = [
     {
       accessorKey: "id_usuario",
@@ -304,7 +300,7 @@ export default function PermisosView(): React.JSX.Element {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 
-                {/* 🛡️ CANDADO VISUAL: Solo permite editar o dar de baja si el estado es true */}
+                {/*  CANDADO VISUAL: Solo permite editar o dar de baja si el estado es true */}
                 {user.estado && (
                   <>
                     <DropdownMenuItem onClick={() => handleOpenEditMode(user)} className="text-[#1E3A8A] font-medium">
@@ -359,18 +355,37 @@ export default function PermisosView(): React.JSX.Element {
 
       {error && (
         <div className="p-3.5 bg-red-50 text-[#C5221F] text-xs font-bold rounded-xl border-l-4 border-[#C5221F]">
-          ⚠️ Alerta de Sincronización: {error}
+           Alerta de Sincronización: {error}
         </div>
       )}
 
+      {/* SECCIÓN 2: FILTRADO DINÁMICO ADAPTADO */}
       <Card className="border-none shadow-sm bg-white rounded-xl">
-        <CardContent className="pt-4 pb-4">
-          <Input
-            placeholder="Filtrar base de datos por apellidos y nombres..."
-            value={(table.getColumn("nombres")?.getFilterValue() as string) ?? ""}
-            onChange={(e) => table.getColumn("nombres")?.setFilterValue(e.target.value)}
-            className="max-w-sm rounded-xl border-slate-200 focus-visible:ring-[#1E3A8A]"
-          />
+        <CardContent className="pt-4 pb-4 flex flex-col sm:flex-row gap-4 items-center">
+          <div className="w-full sm:max-w-sm">
+            <Input
+              placeholder="Filtrar base de datos por apellidos y nombres..."
+              value={(table.getColumn("nombres")?.getFilterValue() as string) ?? ""}
+              onChange={(e) => table.getColumn("nombres")?.setFilterValue(e.target.value)}
+              className="rounded-xl border-slate-200 focus-visible:ring-[#1E3A8A]"
+            />
+          </div>
+          
+          {/* Funcionalidad añadida: Dropdown de filtrado por rol utilizando nombre_rol */}
+          <div className="w-full sm:w-64">
+            <select
+              value={(table.getColumn("nombre_rol")?.getFilterValue() as string) ?? ""}
+              onChange={(e) => table.getColumn("nombre_rol")?.setFilterValue(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none font-medium text-slate-700"
+            >
+              <option value="">Todos los Roles</option>
+              <option value="Administrador">Administrador</option>
+              <option value="Gerente">Gerente</option>
+              <option value="Socio">Socio</option>
+              <option value="Fiscalizador">Fiscalizador</option>
+              <option value="Cobrador">Cobrador</option>
+            </select>
+          </div>
         </CardContent>
       </Card>
 
@@ -489,7 +504,7 @@ export default function PermisosView(): React.JSX.Element {
                 </div>
 
                 <div className="p-3 bg-[#E8EEF5] border border-blue-100 rounded-xl text-xs text-[#1E3A8A] font-medium flex flex-col gap-1">
-                  <span className="font-bold">🔐 Contraseña Autogenerada:</span>
+                  <span className="font-bold"> Contraseña Autogenerada:</span>
                   <p>Por seguridad y para agilizar el despliegue, el sistema configurará automáticamente el <strong>DNI</strong> ingresado como su primera contraseña de acceso.</p>
                 </div>
 
@@ -542,7 +557,7 @@ export default function PermisosView(): React.JSX.Element {
           </DialogHeader>
 
           <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-[#C5221F] font-medium space-y-1">
-            <p><strong>⚠️ Advertencia Operativa Crítica:</strong></p>
+            <p><strong> Advertencia Operativa Crítica:</strong></p>
             <p>Esta acción es de carácter <strong>irreversible</strong> en el entorno de despacho. El usuario perderá inmediatamente el acceso a la consola web y terminales móviles en ruta.</p>
           </div>
 
