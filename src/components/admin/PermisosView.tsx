@@ -12,7 +12,7 @@ import {
   ColumnFiltersState,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Users, ShieldCheck, UserPlus, Mail, Fingerprint, RefreshCw } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Users, ShieldCheck, UserPlus, Mail, Fingerprint, RefreshCw, Trash2 } from "lucide-react"
 import axios from "axios"
 
 // Componentes Atómicos de Shadcn UI
@@ -45,9 +45,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-// ========================================================
-// ENTIDADES Y TIPADOS ESTRICTOS (CUS-01 / Tabla: usuario)
-// ========================================================
 interface UsuarioUnidad {
   id_usuario: number
   dni: string
@@ -65,33 +62,30 @@ interface ApiResponse {
 }
 
 export default function PermisosView(): React.JSX.Element {
-  // Estado maestro conectado a Neon DB
   const [data, setData] = useState<UsuarioUnidad[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>("")
 
-  // Estados de control para TanStack Table
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
-  // Variables de Entorno del Clúster Backend
   const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:3000"
 
-  // ========================================================
-  // ESTADOS PARA EL FORMULARIO DE CONTROL DE IDENTIDADES
-  // ========================================================
+  // ESTADOS DEL FORMULARIO DE EDICIÓN / ALTA
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   
-  // Inputs correlacionados con el esquema relacional de PostgreSQL
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [formDni, setFormDni] = useState<string>("")
   const [formNombres, setFormNombres] = useState<string>("")
   const [formCorreo, setFormCorreo] = useState<string>("")
-  const [formIdRol, setFormIdRol] = useState<number>(5) // Por defecto Cobrador por volumen operativo
+  const [formIdRol, setFormIdRol] = useState<number>(5)
 
-  // Función asíncrona para descargar el personal desde Express
- const fetchUsuarios = async () => {
+  // NUEVOS ESTADOS PARA EL FORMULARIO DE CONFIRMACIÓN DE BAJA LÓGICA (CP42)
+  const [isConfirmDeleteOpen, setIsDeleteOpen] = useState<boolean>(false)
+  const [userToDelete, setUserToDelete] = useState<UsuarioUnidad | null>(null)
+
+  const fetchUsuarios = async () => {
     setLoading(true)
     setError("")
     try {
@@ -102,41 +96,30 @@ export default function PermisosView(): React.JSX.Element {
       if (res.data.status === "OK" && res.data.data) {
         setData(res.data.data)
       } else {
-        setError("La base de datos rechazó la consulta de identidades.")
+        setError("La base de datos central rechazó la consulta de identidades.")
       }
     } catch (err: any) {
-      console.error("Error completo capturado:", err);
-      
-      // CAPTURA INTELIGENTE: Lee la propiedad real enviada por Node o detecta caída de red
-      const errorReal = err.response?.data?.message || err.response?.data?.error;
-      
-      if (errorReal) {
-        setError(errorReal);
-      } else if (err.response?.status === 404) {
-        setError(`Ruta no encontrada (404). Verifique que el endpoint /api/admin/usuarios exista.`);
-      } else {
-        setError("Fallo de comunicación de red: El servidor Express está apagado o hay un bloqueo de CORS.");
-      }
+      console.error("Error capturado:", err);
+      setError(err.response?.data?.message || err.response?.data?.error || "Fallo de red.");
     } finally {
       setLoading(false)
     }
   }
+
   useEffect(() => {
     fetchUsuarios()
   }, [])
 
-  // Abrir modal en Modo Alta Completa (CUS-01) - Clave por defecto eliminada
   const handleOpenAddMode = () => {
     setModalMode('add')
     setSelectedId(null)
     setFormDni("")
     setFormNombres("")
     setFormCorreo("")
-    setFormIdRol(5) // Reset a Cobrador por defecto
+    setFormIdRol(5)
     setIsModalOpen(true)
   }
 
-  // Abrir modal en Modo Corrección Tipográfica
   const handleOpenEditMode = (user: UsuarioUnidad) => {
     setModalMode('edit')
     setSelectedId(user.id_usuario)
@@ -146,32 +129,67 @@ export default function PermisosView(): React.JSX.Element {
     setIsModalOpen(true)
   }
 
-  // Procesador del Submit con persistencia hacia el Backend en Node.js
+  // Interceptor perimetral de Baja de Cuentas antes de abrir el modal de confirmación
+  const handleOpenDeleteConfirm = (user: UsuarioUnidad) => {
+    const token = localStorage.getItem("svdrayf_token")
+    if (token) {
+      try {
+        // Cripto-decodificación rápida del token JWT del cliente para evitar auto-baja
+        const tokenPayload = JSON.parse(atob(token.split(".")[1]))
+        if (tokenPayload.id_usuario === user.id_usuario) {
+          alert("Acción Denegada: No es posible revocar privilegios ni dar de baja a su propia cuenta de administrador en sesión.")
+          return
+        }
+      } catch (e) {
+        console.error("Error al verificar identidad del token", e)
+      }
+    }
+    setUserToDelete(user)
+    setIsDeleteOpen(true)
+  }
+
+  // Ejecución asíncrona de desactivación lógica contra el endpoint del Backend
+  const ejecutarBajaUsuario = async () => {
+    if (!userToDelete) return
+    setLoading(true)
+    const token = localStorage.getItem("svdrayf_token")
+
+    try {
+      const res = await axios.delete(`${API_URL}/api/admin/usuarios/${userToDelete.id_usuario}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.status === "OK") {
+        setIsDeleteOpen(false)
+        fetchUsuarios()
+      }
+    } catch (err: any) {
+      // Captura y despliega el mensaje exacto del servidor (Ej: si el cobrador está en ruta activa)
+      alert(err.response?.data?.message || err.response?.data?.error || "Error de red al procesar la deactivación.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 1. DEFINICIÓN DE REGLAS DE VALIDACIÓN (REGEX)
     const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
     const correoRegex = /^[^\s@]+@(mala\.com|svdrayf\.com)$/;
 
-    // 2. VALIDACIÓN DE NOMBRE (Aplica a ambos modos: add y edit)
     if (!nombreRegex.test(formNombres.trim())) {
       alert("El nombre no es válido: solo se permiten letras y espacios.");
       return;
     }
 
-    // 3. VALIDACIÓN DE CORREO (Solo aplica en modo 'add')
-    if (modalMode === 'add') {
-      if (!correoRegex.test(formCorreo.trim().toLowerCase())) {
-        alert("El correo debe pertenecer al dominio @mala.com o @svdrayf.com");
-        return;
-      }
+    if (modalMode === 'add' && !correoRegex.test(formCorreo.trim().toLowerCase())) {
+      alert("El correo debe pertenecer al dominio @mala.com o @svdrayf.com");
+      return;
     }
+
     setLoading(true)
     const token = localStorage.getItem("svdrayf_token")
 
     try {
       if (modalMode === 'add') {
-        // El backend ahora recibe el DNI y lo hashea de forma transparente como contraseña inicial
         const res = await axios.post(`${API_URL}/api/admin/usuarios`, {
           dni: formDni.trim(),
           nombres: formNombres.trim(),
@@ -185,7 +203,6 @@ export default function PermisosView(): React.JSX.Element {
           setIsModalOpen(false)
         }
       } else if (modalMode === 'edit' && selectedId !== null) {
-        // Enmienda restringida de errores tipográficos para proteger la seguridad corporativa
         const res = await axios.put(`${API_URL}/api/admin/usuarios/${selectedId}`, {
           dni: formDni.trim(),
           nombres: formNombres.trim()
@@ -198,15 +215,12 @@ export default function PermisosView(): React.JSX.Element {
         }
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.response?.data?.error || "Operación rechazada por la base de datos central.")
+      alert(err.response?.data?.message || err.response?.data?.error || "Operación rechazada.")
     } finally {
       setLoading(false)
     }
   }
 
-  // ========================================================
-  // CONFIGURACIÓN DE COLUMNAS DE TANSTACK TABLE
-  // ========================================================
   const columns: ColumnDef<UsuarioUnidad>[] = [
     {
       accessorKey: "id_usuario",
@@ -238,8 +252,7 @@ export default function PermisosView(): React.JSX.Element {
       header: "Perfil de Privilegios",
       cell: ({ row }) => {
         const rol = row.getValue("nombre_rol") as string
-        
-        let badgeStyle = "bg-blue-50 text-blue-700 border-blue-200" // Socio
+        let badgeStyle = "bg-blue-50 text-blue-700 border-blue-200"
         if (rol === "Administrador") badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200"
         else if (rol === "Gerente") badgeStyle = "bg-amber-50 text-amber-700 border-amber-200"
         else if (rol === "Cobrador") badgeStyle = "bg-indigo-50 text-indigo-700 border-indigo-200"
@@ -274,6 +287,10 @@ export default function PermisosView(): React.JSX.Element {
                 <DropdownMenuItem onClick={() => handleOpenEditMode(user)} className="text-[#1E3A8A] font-medium">
                   Subsanar Tipeo (DNI/Nombre)
                 </DropdownMenuItem>
+                {/* Botón de Baja Integrado en el menú contextual de cada celda */}
+                <DropdownMenuItem onClick={() => handleOpenDeleteConfirm(user)} className="text-[#C5221F] font-bold hover:bg-red-50">
+                  Dar de Baja Personal
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -297,7 +314,6 @@ export default function PermisosView(): React.JSX.Element {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* SECCIÓN 1: CABECERA Y ACCIONES CRÍTICAS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black tracking-tight text-[#1E3A8A] flex items-center gap-2">
@@ -323,8 +339,7 @@ export default function PermisosView(): React.JSX.Element {
         </div>
       )}
 
-      {/* SECCIÓN 2: BUSCADOR DE TANSTACK TABLE */}
-      <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-xl">
+      <Card className="border-none shadow-sm bg-white rounded-xl">
         <CardContent className="pt-4 pb-4">
           <Input
             placeholder="Filtrar base de datos por apellidos y nombres..."
@@ -335,8 +350,7 @@ export default function PermisosView(): React.JSX.Element {
         </CardContent>
       </Card>
 
-      {/* SECCIÓN 3: RENDERIZADO DE TABLA SHADCN */}
-      <Card className="border-none shadow-md bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+      <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-slate-50">
@@ -377,7 +391,6 @@ export default function PermisosView(): React.JSX.Element {
             </TableBody>
           </Table>
 
-          {/* COMPONENTE DE PAGINACIÓN */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
@@ -394,9 +407,7 @@ export default function PermisosView(): React.JSX.Element {
         </CardContent>
       </Card>
 
-      {/* ========================================================
-          DIALOG MODAL DUAL CON TODOS LOS ROLES OPERATIVOS
-          ======================================================== */}
+      {/* DIALOG MODAL DUAL CON TODOS LOS ROLES OPERATIVOS */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="rounded-2xl max-w-md border-none p-6 bg-white shadow-2xl">
           <DialogHeader>
@@ -406,14 +417,12 @@ export default function PermisosView(): React.JSX.Element {
             </DialogTitle>
             <DialogDescription className="text-xs font-medium text-slate-400">
               {modalMode === 'add' 
-                ? 'El identificador ingresado permitirá el acceso al sistema web o aplicativo móvil utilizando su DNI como contraseña inicial.' 
+                ? 'El identificador ingresado permitirà el acceso al sistema web o aplicativo móvil utilizando su DNI como contraseña inicial.' 
                 : 'Control de Consistencia: Solo se autoriza enmendar errores de digitación en las columnas DNI y Apellidos/Nombres.'}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleFormSubmit} className="space-y-4 pt-2">
-            
-            {/* Input DNI: Activo en ambos modos */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] flex items-center gap-1">
                 <Fingerprint className="w-3.5 h-3.5" /> Documento Nacional de Identidad (DNI)
@@ -428,7 +437,6 @@ export default function PermisosView(): React.JSX.Element {
               />
             </div>
 
-            {/* Input Nombres: Activo en ambos modos */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A]">Apellidos y Nombres Completos</label>
               <Input 
@@ -440,10 +448,8 @@ export default function PermisosView(): React.JSX.Element {
               />
             </div>
 
-            {/* BLOQUE EXCLUSIVO PARA ALTA DE USUARIOS (MODO ADD) */}
             {modalMode === 'add' && (
               <>
-                {/* Input Correo */}
                 <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5" /> Correo Electrónico Corporativo
@@ -458,13 +464,11 @@ export default function PermisosView(): React.JSX.Element {
                   />
                 </div>
 
-                {/* NOTA DE CONTRASEÑA AUTOGENERADA (REEMPLAZA AL INPUT DE CONTRASEÑA ANTERIOR) */}
                 <div className="p-3 bg-[#E8EEF5] border border-blue-100 rounded-xl text-xs text-[#1E3A8A] font-medium flex flex-col gap-1">
                   <span className="font-bold">🔐 Contraseña Autogenerada:</span>
                   <p>Por seguridad y para agilizar el despliegue, el sistema configurará automáticamente el <strong>DNI</strong> ingresado como su primera contraseña de acceso.</p>
                 </div>
 
-                {/* Selector con Todos los Roles de la Arquitectura SVDRAYF */}
                 <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A]">Asignar Perfil Corporativo</label>
                   <select 
@@ -482,7 +486,6 @@ export default function PermisosView(): React.JSX.Element {
               </>
             )}
 
-            {/* DETALLES DE AUDITORÍA EN EDICIÓN */}
             {modalMode === 'edit' && (
               <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-500 space-y-1">
                 <p><strong>Identificador Fijo:</strong> {formCorreo}</p>
@@ -490,7 +493,6 @@ export default function PermisosView(): React.JSX.Element {
               </div>
             )}
 
-            {/* Acciones de Guardado */}
             <DialogFooter className="pt-4 gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-xl font-bold">
                 Cancelar
@@ -499,8 +501,35 @@ export default function PermisosView(): React.JSX.Element {
                 {modalMode === 'add' ? 'EFECTUAR REGISTRO' : 'CONFIRMAR CAMBIOS'}
               </Button>
             </DialogFooter>
-
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMACIÓN EXPLÍCITA PARA BAJA LÓGICA (CP42) */}
+      <Dialog open={isConfirmDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="rounded-2xl max-w-sm border-none p-6 bg-white shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-[#C5221F] flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-[#C5221F]" /> Confirmar Baja de Personal
+            </DialogTitle>
+            <DialogDescription className="text-xs font-semibold text-slate-500 pt-2">
+              ¿Está seguro de que desea inhabilitar las credenciales de acceso de <strong>{userToDelete?.nombres}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-[#C5221F] font-medium space-y-1">
+            <p><strong>⚠️ Advertencia Operativa Crítica:</strong></p>
+            <p>Esta acción es de carácter <strong>irreversible</strong> en el entorno de despacho. El usuario perderá inmediatamente el acceso a la consola web y terminales móviles en ruta.</p>
+          </div>
+
+          <DialogFooter className="pt-4 flex sm:justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsDeleteOpen(false)} className="rounded-xl font-bold">
+              Cancelar e Impedir
+            </Button>
+            <Button type="button" onClick={ejecutarBajaUsuario} disabled={loading} className="bg-[#C5221F] hover:bg-[#a11b19] text-white font-bold rounded-xl px-4 shadow-md">
+              SÍ, DECRETAR BAJA
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
